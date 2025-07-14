@@ -1,0 +1,36 @@
+{
+  "societe": {
+    "nom": "Global HVAC Solution",
+    "adresse": "Bureau A25 résidence Tunis Carthage, 2080 Borj baccouche Ariana Ville",
+    "telephone": "70295516/29769404",
+    "email": "globalsolhvac@gmail.com",
+    "MF": "1708744Z"
+  },
+  "document": {
+    "type": "DEVIS",
+    "numero": "AW-0068/2025",
+    "date": "02 04-2025"
+  },
+  "client": {
+    "nom": "Mr Kamel Kardeni"
+  },
+  "produit": {
+    "nom": "Système de traitement d'air",
+    "description": "MonoSPLIT marque AIRWELL, UNITE INTERIEURE MURAL marque AIRWELL HDLA-035N-D9M25 YDAA-035H09M25"
+  },
+  "montant": {
+    "total_brute": 711940.0,
+    "remise": 1906446.0,
+    "total_ht": 3000.0,
+    "tva": 30.0,
+    "timbre_fiscal": 0.0,
+    "total_ttc": 78520159.0
+  },
+  "cachet_et_signature": {
+    "nom": "Global HVAC Solution",
+    "adresse": "Bureau A25 résidence Tunis Carthage, 2080 Borj baccouche Ariana Ville",
+    "telephone": "70295516/29769404",
+    "email": "globalsolhvac@gmail.com",
+    "MF": "1708744Z"
+  }
+}
