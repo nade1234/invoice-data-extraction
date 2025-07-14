@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import PlainTextResponse
 from PyPDF2 import PdfReader, PdfWriter
 from pdf2image import convert_from_path
 from dotenv import load_dotenv
@@ -19,10 +19,8 @@ if not OCR_API_KEY:
 
 MAX_SIZE = 1_000_000  # 1 Mo
 
-# ───── FastAPI ─────
 app = FastAPI()
 
-# ───── Fonctions OCR ─────
 def ocr_space(path: Path) -> str:
     data = path.read_bytes()
     resp = requests.post(
@@ -68,17 +66,14 @@ def ocr_by_images(path: Path) -> str:
     return txt
 
 def ocr_auto(path: Path) -> str:
-    # Fallback uniquement pour les PDFs oversize
     try:
         if path.suffix.lower() == ".pdf" and path.stat().st_size > MAX_SIZE:
             return split_and_ocr(path)
         return ocr_space(path)
     except Exception:
-        # Si split_and_ocr ou ocr_space sur PDF échoue, tente OCR via images
         return ocr_by_images(path)
 
-# ───── Endpoint principal : OCR ONLY ─────
-@app.post("/ocr_extract/", response_class=HTMLResponse)
+@app.post("/ocr_extract/", response_class=PlainTextResponse)
 async def ocr_extract(files: List[UploadFile] = File(...)):
     raw_text = ""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -87,21 +82,21 @@ async def ocr_extract(files: List[UploadFile] = File(...)):
             tmp_path = Path(tmpdir) / upload.filename
             with open(tmp_path, "wb") as f:
                 shutil.copyfileobj(upload.file, f)
-            if ext == ".pdf":
-                try:
-                    raw_text += ocr_auto(tmp_path) + "\n"
-                except Exception as e:
-                    raise HTTPException(500, detail=f"OCR error on {upload.filename}: {e}")
-            elif ext in {".jpg", ".jpeg", ".png", ".tiff", ".bmp"}:
-                try:
-                    raw_text += ocr_space(tmp_path) + "\n"
-                except Exception as e:
-                    raise HTTPException(500, detail=f"OCR error on {upload.filename}: {e}")
-            else:
-                raise HTTPException(400, detail=f"Format non supporté : {ext}")
 
-    html_body = f"<html><body><pre>{raw_text}</pre></body></html>"
-    return HTMLResponse(content=html_body)
+            try:
+                if ext == ".pdf":
+                    raw_text += ocr_auto(tmp_path) + "\n"
+                elif ext in {".jpg", ".jpeg", ".png", ".tiff", ".bmp"}:
+                    raw_text += ocr_space(tmp_path) + "\n"
+                else:
+                    raise HTTPException(400, detail=f"Format non supporté : {ext}")
+            except Exception as e:
+                # si c’est déjà une HTTPException, on le remonte, sinon c’est un 500 interne
+                if isinstance(e, HTTPException):
+                    raise
+                raise HTTPException(500, detail=f"OCR error on {upload.filename}: {e}")
+
+    return raw_text
 
 if __name__ == "__main__":
     import uvicorn
