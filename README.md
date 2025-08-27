@@ -1,120 +1,204 @@
-# DWEXO-OCR API
+# 📄 OCR & Invoice Extractor API
 
-## Description
+A **FastAPI** service to extract text from PDFs/images using **OCR.Space** and, optionally, transform the result into a structured **invoice JSON** using **Groq LLM**.
 
-DWEXO-OCR is a FastAPI-based web service for extracting text from PDF and image files using the OCR.Space API. It handles large PDFs by splitting pages or converting them to images, and returns plain text for easy integration.
+---
 
-## Features
+## — Two Modes (Two Endpoints)
 
-* OCR on PDFs and common image formats (JPG, PNG, TIFF, BMP)
-* Automatic splitting of large PDFs (> 1 MB) for OCR
-* Fallback to image-based OCR on PDF processing failure
-* Single endpoint for batch processing of multiple files
-* Docker support for containerized deployment
+* **OCR only (no LLM)** → `POST /ocr_extract/`
 
-## Requirements
+  * Returns **raw text**.
+  * **No Groq key required**.
+* **OCR + LLM (structured invoice)** → `POST /ocr_extract_llm/`
 
-* Python 3.12+
-* [Poppler](https://github.com/oschwartz10612/poppler-windows/releases/) (for `pdf2image` on Windows)
-* Docker (optional, for containerized deployment)
+  * Returns **structured JSON** (invoice fields).
+  * **Requires** `GROQ_API_KEY`.
 
-### Python Dependencies
+> Choose `/ocr_extract/` if you only need text. Choose `/ocr_extract_llm/` if you want a normalized invoice JSON.
 
-Managed via `requirements.txt`. Key packages include:
+---
 
-```txt
-fastapi==0.116.1
-uvicorn==0.35.0
-python-dotenv==1.1.1
-requests==2.32.4
-PyPDF2==3.0.1
-pdf2image==1.17.0
-pillow==11.3.0
-python-multipart==0.0.20
+## ✨ Features
+
+* Accepts **PDF** and **image** files: `.pdf`, `.jpg`, `.jpeg`, `.png`, `.tiff`, `.bmp`.
+* Handles large PDFs by **splitting per page** or **PDF→image conversion**.
+* Smart OCR fallback: if direct OCR fails, converts pages to images and retries.
+* Optional **JSON extraction** for invoices via **Groq LLM**.
+
+---
+
+## ⚙️ Requirements
+
+* **Python** ≥ 3.9
+* System dependency for `pdf2image`:
+
+  * **Poppler** must be installed and in `PATH`.
+
+    * Ubuntu/Debian: `sudo apt-get install poppler-utils`
+    * macOS (Homebrew): `brew install poppler`
+    * Windows: install Poppler and add `bin` to PATH (e.g., `C:\poppler-xx\Library\bin`).
+
+---
+
+## 📦 Installation
+
+```bash
+git clone https://github.com/nade1234/invoice-data-extraction.git
+cd invoice-data-extraction
+python -m venv .venv
+# Linux/macOS
+source .venv/bin/activate
+# Windows
+# .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-## Installation
+Create a **.env** file in the project root:
 
-1. **Clone the repository**
+```env
+OCR_API_KEY=your_ocrspace_api_key
+# Only required if you call /ocr_extract_llm/
+GROQ_API_KEY=your_groq_api_key
+```
 
-   ```bash
-   git clone git@gitlab.com:cherry-soft/dwexo-ocr.git
-   cd dwexo-ocr
-   ```
+> The app will raise a clear error on startup if either key is missing. If you only plan to use `/ocr_extract/`, you can set a dummy `GROQ_API_KEY` or adjust the startup checks.
 
-2. **Create and activate a virtual environment**
+---
 
-   ```bash
-   python -m venv .venv
-   # Windows
-   . .venv/Scripts/activate
-   # macOS/Linux
-   source .venv/bin/activate
-   ```
-
-3. **Install dependencies**
-
-   ```bash
-   pip install --no-cache-dir -r requirements.txt
-   ```
-
-4. **Configure environment variables**
-   Create a file `.env` in the project root with:
-
-   ```env
-   OCR_API_KEY=your_ocr_space_api_key
-   ```
-
-## Running Locally
-
-Start the server with Uvicorn:
+## ▶️ Run
 
 ```bash
 uvicorn ocr_api:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Open your browser at `http://localhost:8000/docs` to access the interactive Swagger UI.
+* API root: `http://127.0.0.1:8000`
+* Docs (Swagger): `http://127.0.0.1:8000/docs`
 
-## API Usage
+---
 
-### POST `/ocr_extract/`
+## 🔌 Endpoints
 
-* **Description**: Accepts one or more PDF/image files and returns the extracted text.
-* **Request**: `multipart/form-data` field `files` with file uploads.
-* **Response**: `text/plain` containing concatenated OCR results.
+### 1) OCR only — **No LLM**
 
-**Example using `curl`:**
+`POST /ocr_extract/`
 
-```bash
-curl -X POST "http://localhost:8000/ocr_extract/" \
-  -F "files=@/path/to/document.pdf" \
-  -F "files=@/path/to/image.jpg"
-```
+* **Request**: `multipart/form-data` with one or more `files`.
+* **Response**: `text/plain` (concatenated raw text from all pages/files).
 
-## Docker
-
-Build the Docker image:
+**cURL**
 
 ```bash
-docker build -t dwexo-ocr:latest .
+curl -X POST "http://127.0.0.1:8000/ocr_extract/" \
+  -F "files=@invoice.pdf"
 ```
 
-Run a container:
+**Multiple files**
 
 ```bash
-docker run -d \
-  -p 8000:8000 \
-  -e OCR_API_KEY=your_ocr_space_api_key \
-  --name dwexo-ocr \
-  dwexo-ocr:latest
+curl -X POST "http://127.0.0.1:8000/ocr_extract/" \
+  -F "files=@page1.jpg" \
+  -F "files=@page2.png"
 ```
 
-Access the API at `http://localhost:8000/docs` inside your browser.
+---
 
-## Contributing
+### 2) OCR + LLM — **Structured Invoice JSON**
 
-Contributions are welcome! Feel free to open issues or submit merge requests.
+`POST /ocr_extract_llm/`
 
-## License
+* **Request**: `multipart/form-data` with one or more `files`.
+* **Response**: `application/json` (invoice payload).
+* **Requires**: `GROQ_API_KEY`.
 
-This project is licensed under the MIT License.
+**cURL**
+
+```bash
+curl -X POST "http://127.0.0.1:8000/ocr_extract_llm/" \
+  -F "files=@invoice.pdf"
+```
+
+**Example JSON**
+
+```json
+{
+  "invoiceNumber": "INV-2024-001",
+  "invoiceDate": "2024-06-01",
+  "dueDate": "2024-07-01",
+  "supplier": {
+    "name": "ABC Corp",
+    "address": "123 Rue Exemple, Paris",
+    "email": "info@abccorp.com",
+    "phone": "+33 1 23 45 67 89",
+    "registrationNumber": "FR123456789"
+  },
+  "client": {
+    "name": "XYZ SARL",
+    "address": "45 Boulevard Client, Lyon"
+  },
+  "items": [
+    {
+      "reference": "PRD001",
+      "description": "Product A",
+      "quantity": 2,
+      "VAT": 10.0,
+      "unitPrice": 50.0,
+      "totalPrice": 100.0
+    }
+  ],
+  "subtotal": 100.0,
+  "total VAT": 10.0,
+  "total amount": 110.0,
+  "currency": "EUR",
+  "paymentTerms": "30 days",
+  "note": "Merci pour votre confiance."
+}
+```
+
+> 💡 **Decimal rule in prompt**: the LLM is instructed that commas are **decimal separators** (e.g., `1,50 → 1.50`). Periods can be thousands separators depending on context. Validate and normalize as needed.
+
+---
+
+## 🧠 How it works
+
+* **`ocr_space(path)`**: Calls OCR.Space (`language=fre`) and returns parsed text.
+* **`split_and_ocr(path)`**: Splits PDFs into single-page PDFs if size exceeds `MAX_SIZE` (1 MB per page). OCRs each page.
+* **`ocr_by_images(path)`**: Converts PDF pages to images (`dpi=150`), compresses progressively to fit under 1 MB, then OCRs.
+* **`ocr_auto(path)`**: Chooses the best strategy based on file type/size, falls back to image OCR on error.
+* **`format_text_with_llm(raw_text)`**: Sends a strict prompt to Groq (`llama3-70b-8192`) and attempts to parse the JSON.
+
+---
+
+## 📏 Limits & Behavior
+
+* **MAX\_SIZE**: `1_000_000` bytes (1 MB) **per page/image** before calling OCR.
+* If a page/image cannot be compressed under 1 MB, the code downsizes and retries.
+* Supported inputs: `.pdf`, `.jpg`, `.jpeg`, `.png`, `.tiff`, `.bmp`.
+* The OCR request uses French (`language=fre`). Adjust if your documents are not in French.
+
+---
+
+## 🧪 Request/Response Summary
+
+| Endpoint                 | Purpose            | Output             | API keys needed               |
+| ------------------------ | ------------------ | ------------------ | ----------------------------- |
+| `POST /ocr_extract/`     | OCR only           | `text/plain`       | `OCR_API_KEY`                 |
+| `POST /ocr_extract_llm/` | OCR + invoice JSON | `application/json` | `OCR_API_KEY`, `GROQ_API_KEY` |
+
+---
+
+## 🧯 Error Handling
+
+* `400` **Bad Request**: Unsupported file extension.
+* `500` **Server Error**: OCR failure (with filename and error detail).
+* LLM JSON parsing fallback: if parsing fails, returns `{ "raw_llm_response": "..." }`.
+
+> **Tip (code hygiene):** If `format_text_with_llm` already returns a Python `dict`, you can directly return it instead of calling `json.loads` again in `/ocr_extract_llm/`.
+
+---
+
+## 🔐 Security Notes
+
+* Keep `.env` out of version control (`.gitignore`).
+* Never log raw API keys.
+* Consider adding file-type and size validations at upload boundary (Fast
