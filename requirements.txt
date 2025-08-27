@@ -1,3 +1,4 @@
+# --- your existing deps ---
 annotated-types==0.7.0
 anyio==4.9.0
 certifi==2025.7.14
@@ -24,3 +25,9 @@ uvicorn==0.35.0
 python-multipart==0.0.20
 groq==0.29.0
 
+# --- add these for OpenCV, Tesseract, numpy, and RAG  ---
+numpy>=1.25.0
+opencv-python>=4.8.0
+pytesseract>=0.3.10
+langchain>=0.0.400               # or latest
+chromadb>=0.4.0                  # or latest
